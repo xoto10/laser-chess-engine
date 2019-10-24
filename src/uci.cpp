@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
             cout << "option name Hash type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name Ponder type check default false" << endl;
+            cout << "option name UCI_Chess960 type check default false" << endl;
             cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
             cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
@@ -250,6 +251,9 @@ int main(int argc, char **argv) {
                 else if (inputVector.at(2) == "ponder") {
                     // do nothing
                 }
+                else if (inputVector.at(2) == "UCI_Chess960") {
+                  board.isChess960 = (inputVector.at(4) == "true" ? true : false);
+                }
                 else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));
                     if (multiPV < MIN_MULTI_PV)
@@ -381,6 +385,48 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
     }
 
     twoFoldPositions->setRootEnd();
+
+    if (!board.isChess960)
+    {
+        board.WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+        board.WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+        board.BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+        board.BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
+    }
+    else
+    {
+        uint64_t rooks = board.getPieces(WHITE, ROOKS);
+        int sq;
+        board.WHITE_KSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = board.getKingSq(WHITE) + 1;
+                 board.getWhiteCanKCastle() && !(indexToBit(sq) & rooks) && (sq % 8); ++sq)
+            // && (sq % 8) may not be necessary??
+            board.WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+        if (board.getWhiteCanKCastle() && (indexToBit(sq) & rooks) && (sq % 8)) // only need first test??
+            board.WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        board.WHITE_QSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = board.getKingSq(WHITE) - 1;
+                 board.getWhiteCanQCastle() && !(indexToBit(sq) & rooks) && (sq % 8 != 7); --sq)
+            board.WHITE_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+        if (board.getWhiteCanQCastle() && (indexToBit(sq) & rooks) && (sq % 8))
+            board.WHITE_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        rooks = board.getPieces(BLACK, ROOKS);
+        board.BLACK_KSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = board.getKingSq(BLACK) + 1;
+                     board.getBlackCanKCastle() && !(indexToBit(sq) & rooks) && (sq % 8); ++sq)
+            board.BLACK_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+        if (board.getBlackCanKCastle() && (indexToBit(sq) & rooks) && (sq % 8))
+            board.BLACK_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        board.BLACK_QSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = board.getKingSq(BLACK) - 1;
+                 board.getBlackCanQCastle() && !(indexToBit(sq) & rooks) && (sq % 8 != 7); --sq)
+            board.BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+        if (board.getBlackCanQCastle() && (indexToBit(sq) & rooks) && (sq % 8))
+            board.BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+    }
 }
 
 // Splits a string s with delimiter d.
@@ -405,7 +451,14 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
 
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
-    bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
+    bool isCastle;
+    if (b.isChess960)
+    {
+        isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)));
+        endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
+    }
+    else
+        isCastle = (isKingMove && abs(endSq - startSq) == 2);
     string promotionString = " nbrq";
     int promotion = (moveStr.length() == 5)
         ? promotionString.find(moveStr.at(4)) : 0;

@@ -150,6 +150,12 @@ public:
 
     void initZobristKey(int *mailbox);
 
+    bool isChess960;
+    uint64_t WHITE_KSIDE_PASSTHROUGH_SQS;
+    uint64_t WHITE_QSIDE_PASSTHROUGH_SQS;
+    uint64_t BLACK_KSIDE_PASSTHROUGH_SQS;
+    uint64_t BLACK_QSIDE_PASSTHROUGH_SQS;
+
 private:
     // Bitboards for all white or all black pieces
     uint64_t allPieces[2];
