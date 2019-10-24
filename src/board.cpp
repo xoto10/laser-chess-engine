@@ -125,6 +125,12 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
     kingSqs[WHITE] = bitScanForward(pieces[WHITE][KINGS]);
     kingSqs[BLACK] = bitScanForward(pieces[BLACK][KINGS]);
+
+    isChess960 = false;
+    WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+    WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+    BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+    BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
 }
 
 Board::~Board() {}

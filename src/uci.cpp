@@ -386,15 +386,13 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
 
     twoFoldPositions->setRootEnd();
 
-    if (!board.isChess960)
-    {
+    if (!board.isChess960) {
         board.WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
         board.WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
         board.BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
         board.BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
     }
-    else
-    {
+    else {
         uint64_t rooks = board.getPieces(WHITE, ROOKS);
         int sq;
         board.WHITE_KSIDE_PASSTHROUGH_SQS = 0;
@@ -452,8 +450,7 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
     bool isCastle;
-    if (b.isChess960)
-    {
+    if (b.isChess960) {
         isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)));
         endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
     }
@@ -617,6 +614,10 @@ void stringToLowerCase(std::string &s) {
 void clearAll(Board &board) {
     clearTables();
     board = fenToBoard(STARTPOS);
+    board.WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+    board.WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+    board.BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+    board.BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
 }
 
 /*
