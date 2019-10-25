@@ -23,6 +23,7 @@
 #include "board.h"
 #include "bbinit.h"
 #include "eval.h"
+#include "search.h"
 #include "uci.h"
 
 
@@ -81,7 +82,6 @@ Board::Board() {
     kingSqs[WHITE] = 4;
     kingSqs[BLACK] = 60;
 
-    isChess960 = false;
     WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
     WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
     BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
@@ -126,7 +126,6 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     kingSqs[WHITE] = bitScanForward(pieces[WHITE][KINGS]);
     kingSqs[BLACK] = bitScanForward(pieces[BLACK][KINGS]);
 
-    isChess960 = false;
     WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
     WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
     BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
@@ -222,68 +221,124 @@ void Board::doMove(Move m, int color) {
     } // end capture
     else { // Quiet moves
         if (isCastle(m)) {
-            if (endSq == 6) { // white kside
-                pieces[WHITE][KINGS] &= ~indexToBit(4);
+            if (endSq < 8 && endSq > startSq) { // white kside
+                if (isChess960()) {
+                    pieces[WHITE][KINGS] &= ~indexToBit(startSq);
+                    pieces[WHITE][ROOKS] &= ~indexToBit(endSq);
+
+                    allPieces[WHITE] &= ~indexToBit(startSq);
+                    allPieces[WHITE] &= ~indexToBit(endSq);
+
+                    zobristKey ^= zobristTable[64*KINGS+startSq];
+                    zobristKey ^= zobristTable[64*ROOKS+endSq];
+                } else {
+                    pieces[WHITE][KINGS] &= ~indexToBit(4);
+                    pieces[WHITE][ROOKS] &= ~indexToBit(7);
+
+                    allPieces[WHITE] &= ~indexToBit(4);
+                    allPieces[WHITE] &= ~indexToBit(7);
+
+                    zobristKey ^= zobristTable[64*KINGS+4];
+                    zobristKey ^= zobristTable[64*ROOKS+7];
+                }
+
                 pieces[WHITE][KINGS] |= indexToBit(6);
-                pieces[WHITE][ROOKS] &= ~indexToBit(7);
                 pieces[WHITE][ROOKS] |= indexToBit(5);
 
-                allPieces[WHITE] &= ~indexToBit(4);
                 allPieces[WHITE] |= indexToBit(6);
-                allPieces[WHITE] &= ~indexToBit(7);
                 allPieces[WHITE] |= indexToBit(5);
 
-                zobristKey ^= zobristTable[64*KINGS+4];
                 zobristKey ^= zobristTable[64*KINGS+6];
-                zobristKey ^= zobristTable[64*ROOKS+7];
                 zobristKey ^= zobristTable[64*ROOKS+5];
             }
-            else if (endSq == 2) { // white qside
-                pieces[WHITE][KINGS] &= ~indexToBit(4);
-                pieces[WHITE][KINGS] |= indexToBit(2);
-                pieces[WHITE][ROOKS] &= ~indexToBit(0);
-                pieces[WHITE][ROOKS] |= indexToBit(3);
+            else if (endSq < 8 && endSq < startSq) { // white qside
+                if (isChess960()) {
+                    pieces[WHITE][KINGS] &= ~indexToBit(startSq);
+                    pieces[WHITE][ROOKS] &= ~indexToBit(endSq);
 
-                allPieces[WHITE] &= ~indexToBit(4);
+                    allPieces[WHITE] &= ~indexToBit(startSq);
+                    allPieces[WHITE] &= ~indexToBit(endSq);
+
+                    zobristKey ^= zobristTable[64*KINGS+startSq];
+                    zobristKey ^= zobristTable[64*ROOKS+endSq];
+                } else {
+                    pieces[WHITE][KINGS] &= ~indexToBit(4);
+                    pieces[WHITE][ROOKS] &= ~indexToBit(0);
+
+                    allPieces[WHITE] &= ~indexToBit(4);
+                    allPieces[WHITE] &= ~indexToBit(0);
+
+                    zobristKey ^= zobristTable[64*KINGS+4];
+                    zobristKey ^= zobristTable[64*ROOKS+0];
+                }
+
                 allPieces[WHITE] |= indexToBit(2);
-                allPieces[WHITE] &= ~indexToBit(0);
                 allPieces[WHITE] |= indexToBit(3);
 
-                zobristKey ^= zobristTable[64*KINGS+4];
+                pieces[WHITE][KINGS] |= indexToBit(2);
+                pieces[WHITE][ROOKS] |= indexToBit(3);
+
                 zobristKey ^= zobristTable[64*KINGS+2];
-                zobristKey ^= zobristTable[64*ROOKS+0];
                 zobristKey ^= zobristTable[64*ROOKS+3];
             }
-            else if (endSq == 62) { // black kside
-                pieces[BLACK][KINGS] &= ~indexToBit(60);
-                pieces[BLACK][KINGS] |= indexToBit(62);
-                pieces[BLACK][ROOKS] &= ~indexToBit(63);
-                pieces[BLACK][ROOKS] |= indexToBit(61);
+            else if (endSq > 55 && endSq > startSq) { // black kside
+                if (isChess960()) {
+                    pieces[BLACK][KINGS] &= ~indexToBit(startSq);
+                    pieces[BLACK][ROOKS] &= ~indexToBit(endSq);
 
-                allPieces[BLACK] &= ~indexToBit(60);
+                    allPieces[BLACK] &= ~indexToBit(startSq);
+                    allPieces[BLACK] &= ~indexToBit(endSq);
+
+                    zobristKey ^= zobristTable[384+64*KINGS+startSq];
+                    zobristKey ^= zobristTable[384+64*ROOKS+endSq];
+                } else {
+                    pieces[BLACK][KINGS] &= ~indexToBit(60);
+                    pieces[BLACK][ROOKS] &= ~indexToBit(63);
+
+                    allPieces[BLACK] &= ~indexToBit(60);
+                    allPieces[BLACK] &= ~indexToBit(63);
+
+                    zobristKey ^= zobristTable[384+64*KINGS+60];
+                    zobristKey ^= zobristTable[384+64*ROOKS+63];
+                }
+
                 allPieces[BLACK] |= indexToBit(62);
-                allPieces[BLACK] &= ~indexToBit(63);
                 allPieces[BLACK] |= indexToBit(61);
 
-                zobristKey ^= zobristTable[384+64*KINGS+60];
+                pieces[BLACK][KINGS] |= indexToBit(62);
+                pieces[BLACK][ROOKS] |= indexToBit(61);
+
                 zobristKey ^= zobristTable[384+64*KINGS+62];
-                zobristKey ^= zobristTable[384+64*ROOKS+63];
                 zobristKey ^= zobristTable[384+64*ROOKS+61];
             }
             else { // black qside
-                pieces[BLACK][KINGS] &= ~indexToBit(60);
-                pieces[BLACK][KINGS] |= indexToBit(58);
-                pieces[BLACK][ROOKS] &= ~indexToBit(56);
-                pieces[BLACK][ROOKS] |= indexToBit(59);
+                if (isChess960()) {
+                    pieces[BLACK][KINGS] &= ~indexToBit(startSq);
+                    pieces[BLACK][ROOKS] &= ~indexToBit(endSq);
 
-                allPieces[BLACK] &= ~indexToBit(60);
+                    allPieces[BLACK] &= ~indexToBit(startSq);
+                    allPieces[BLACK] &= ~indexToBit(endSq);
+
+                    zobristKey ^= zobristTable[384+64*KINGS+startSq];
+                    zobristKey ^= zobristTable[384+64*ROOKS+endSq];
+                } else {
+                    pieces[BLACK][KINGS] &= ~indexToBit(60);
+                    pieces[BLACK][ROOKS] &= ~indexToBit(56);
+
+                    allPieces[BLACK] &= ~indexToBit(60);
+                    allPieces[BLACK] &= ~indexToBit(56);
+
+                    zobristKey ^= zobristTable[384+64*KINGS+60];
+                    zobristKey ^= zobristTable[384+64*ROOKS+56];
+                }
+
                 allPieces[BLACK] |= indexToBit(58);
-                allPieces[BLACK] &= ~indexToBit(56);
                 allPieces[BLACK] |= indexToBit(59);
 
-                zobristKey ^= zobristTable[384+64*KINGS+60];
+                pieces[BLACK][KINGS] |= indexToBit(58);
+                pieces[BLACK][ROOKS] |= indexToBit(59);
+
                 zobristKey ^= zobristTable[384+64*KINGS+58];
-                zobristKey ^= zobristTable[384+64*ROOKS+56];
                 zobristKey ^= zobristTable[384+64*ROOKS+59];
             }
             epCaptureFile = NO_EP_POSSIBLE;

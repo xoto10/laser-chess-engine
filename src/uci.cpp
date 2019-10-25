@@ -251,8 +251,8 @@ int main(int argc, char **argv) {
                 else if (inputVector.at(2) == "ponder") {
                     // do nothing
                 }
-                else if (inputVector.at(2) == "UCI_Chess960") {
-                  board.isChess960 = (inputVector.at(4) == "true" ? true : false);
+                else if (inputVector.at(2) == "uci_chess960") {
+                  setChess960(inputVector.at(4) == "true" ? true : false);
                 }
                 else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));
@@ -386,7 +386,7 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
 
     twoFoldPositions->setRootEnd();
 
-    if (!board.isChess960) {
+    if (!isChess960()) {
         board.WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
         board.WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
         board.BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
@@ -450,9 +450,15 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
     bool isCastle;
-    if (b.isChess960) {
-        isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)));
-        endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
+if (isKingMove && abs(endSq - startSq) > 1 && abs(endSq - startSq) < 5)
+cout << "info string c960 castle in2\n" << boardToString(b) << " c960 " << int(isChess960()) << " mvin " << moveStr << endl;
+
+    if (isChess960()) {
+        if ( (isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)))) )
+        {
+cout << "info string c960 castle in\n" << boardToString(b) << " mvin " << moveStr << endl;
+//          endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
+        }
     }
     else
         isCastle = (isKingMove && abs(endSq - startSq) == 2);
