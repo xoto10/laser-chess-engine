@@ -59,6 +59,7 @@ TimeManagement timeParams;
 // Declared in search.cpp
 extern std::atomic<bool> isStop;
 extern std::atomic<bool> stopSignal;
+bool castled;
 
 
 int main(int argc, char **argv) {
@@ -82,7 +83,7 @@ int main(int argc, char **argv) {
 
     Board board = fenToBoard(STARTPOS);
 
-    cout << name << " " << version << " by " << author << endl;
+//  cout << name << " " << version << " by " << author << endl;
 
     // Run benchmark from command line with given depth
     if (argc > 1 && strcmp(argv[1], "bench") == 0) {
@@ -203,6 +204,7 @@ int main(int argc, char **argv) {
                     timeParams.maxAllotment = (int) std::min(value * MAX_TIME_FACTOR, timeRemaining * 0.95);
                     timeParams.allotment = std::min(value, timeParams.maxAllotment / 3);
                 }
+cout << "info string 960 " << isChess960() << " go received\n" << boardToString(board) << endl;
             }
 
             isStop = false;
@@ -312,10 +314,11 @@ int main(int argc, char **argv) {
 
             uint64_t time = getTimeElapsed(startTime);
 
-            cerr << "Nodes: " << nodes << endl;
-            cerr << "Captures: " << captures << endl;
-            cerr << "Time: " << time << endl;
-            cerr << "Nodes/second: " << 1000 * nodes / time << endl;
+//          cerr << "Nodes: " << nodes << endl;
+            cerr << nodes << endl;
+//          cerr << "Captures: " << captures << endl;
+//          cerr << "Time: " << time << endl;
+//          cerr << "Nodes/second: " << 1000 * nodes / time << endl;
         }
         else if (input.substr(0, 5) == "bench") {
             int depth = 0;
@@ -383,48 +386,10 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
             }
         }
     }
+if (castled)
+cout << "info string c960 castled\n" << boardToString(board) << endl;
 
     twoFoldPositions->setRootEnd();
-
-    if (!isChess960()) {
-        board.WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
-        board.WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
-        board.BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
-        board.BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
-    }
-    else {
-        uint64_t rooks = board.getPieces(WHITE, ROOKS);
-        int sq;
-        board.WHITE_KSIDE_PASSTHROUGH_SQS = 0;
-        for (sq = board.getKingSq(WHITE) + 1;
-                 board.getWhiteCanKCastle() && !(indexToBit(sq) & rooks) && (sq % 8); ++sq)
-            // && (sq % 8) may not be necessary??
-            board.WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-        if (board.getWhiteCanKCastle() && (indexToBit(sq) & rooks) && (sq % 8)) // only need first test??
-            board.WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-
-        board.WHITE_QSIDE_PASSTHROUGH_SQS = 0;
-        for (sq = board.getKingSq(WHITE) - 1;
-                 board.getWhiteCanQCastle() && !(indexToBit(sq) & rooks) && (sq % 8 != 7); --sq)
-            board.WHITE_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-        if (board.getWhiteCanQCastle() && (indexToBit(sq) & rooks) && (sq % 8))
-            board.WHITE_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-
-        rooks = board.getPieces(BLACK, ROOKS);
-        board.BLACK_KSIDE_PASSTHROUGH_SQS = 0;
-        for (sq = board.getKingSq(BLACK) + 1;
-                     board.getBlackCanKCastle() && !(indexToBit(sq) & rooks) && (sq % 8); ++sq)
-            board.BLACK_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-        if (board.getBlackCanKCastle() && (indexToBit(sq) & rooks) && (sq % 8))
-            board.BLACK_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-
-        board.BLACK_QSIDE_PASSTHROUGH_SQS = 0;
-        for (sq = board.getKingSq(BLACK) - 1;
-                 board.getBlackCanQCastle() && !(indexToBit(sq) & rooks) && (sq % 8 != 7); --sq)
-            board.BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-        if (board.getBlackCanQCastle() && (indexToBit(sq) & rooks) && (sq % 8))
-            board.BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
-    }
 }
 
 // Splits a string s with delimiter d.
@@ -450,13 +415,15 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
     bool isCastle;
-if (isKingMove && abs(endSq - startSq) > 1 && abs(endSq - startSq) < 5)
-cout << "info string c960 castle in2\n" << boardToString(b) << " c960 " << int(isChess960()) << " mvin " << moveStr << endl;
+    castled = false;
+//if (isKingMove && abs(endSq - startSq) > 1 && abs(endSq - startSq) < 5)
+//cout << "info string c960 castle in2\n" << boardToString(b) << " c960 " << int(isChess960()) << " mvin " << moveStr << endl;
 
     if (isChess960()) {
         if ( (isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)))) )
         {
 cout << "info string c960 castle in\n" << boardToString(b) << " mvin " << moveStr << endl;
+            castled = true;
 //          endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
         }
     }
@@ -487,23 +454,52 @@ Board fenToBoard(string s) {
     int mailbox[64];
     int sqCounter = -1;
     string pieceString = "PNBRQKpnbrqk";
+    int ksq[2];
 
+//cout << "info string fentoboard\n" << s << "\n" << endl;
     // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
     for (int elem = 7; elem >= 0; elem--) {
         string rowAtElem = rows.at(elem);
 
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
             char sq = rowAtElem.at(col);
+            if (sq == 'K')
+                //cout << "info string K at " << col << "," << 8-elem << endl;
+                ksq[WHITE] = 8*(8-elem) + col-1;
+            else if (sq == 'k')
+                ksq[BLACK] = 8*(8-elem) + col-1;
             do mailbox[++sqCounter] = pieceString.find(sq--);
             while ('0' < sq && sq < '8');
         }
     }
 
     int playerToMove = (components.at(1) == "w") ? WHITE : BLACK;
-    bool whiteCanKCastle = (components.at(2).find("K") != string::npos);
-    bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
-    bool blackCanKCastle = (components.at(2).find("k") != string::npos);
-    bool blackCanQCastle = (components.at(2).find("q") != string::npos);
+
+    char whiteCanKCastle = false;
+    char whiteCanQCastle = false;
+    char blackCanKCastle = false;
+    char blackCanQCastle = false;
+    //cout << "info string comp2 " << components.at(2) << endl;
+    for (unsigned i = 0; i < components.at(2).length(); i++) {
+        char c = components.at(2).at(i);
+//cout << "info string comps " << c << endl;
+        if (c == 'K') whiteCanKCastle = c;
+        if (c == 'Q') whiteCanQCastle = c;
+        if (c == 'k') blackCanKCastle = c;
+        if (c == 'q') blackCanQCastle = c;
+        if ('A' <= c && c <= 'H') {
+            if (c - 'A' > ksq[WHITE] % 8)  whiteCanKCastle = c;
+            else                           whiteCanQCastle = c;
+        }
+        if ('a' <= c && c <= 'h') {
+            if (c - 'a' > ksq[BLACK] % 8)  blackCanKCastle = c;
+            else                           blackCanQCastle = c;
+        }
+    }
+if (whiteCanKCastle || whiteCanQCastle || blackCanKCastle || blackCanQCastle)
+    cout << "info string castles " << (whiteCanQCastle?"Q":"-") << (whiteCanKCastle?"K":"-")
+         << (blackCanQCastle?"q":"-") << (blackCanKCastle?"k":"-") << endl;
+
     int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
         : components.at(3).at(0) - 'a';
     int fiftyMoveCounter = (components.size() == 6) ? std::stoi(components.at(4)) : 0;

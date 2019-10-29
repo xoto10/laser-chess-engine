@@ -20,11 +20,17 @@
 #include <cstring>
 #include <random>
 #include <string>
+#include <iostream>
 #include "board.h"
 #include "bbinit.h"
 #include "eval.h"
 #include "search.h"
 #include "uci.h"
+
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::string;
 
 
 // Zobrist hashing table and the start position key, both initialized at startup
@@ -89,8 +95,8 @@ Board::Board() {
 }
 
 // Create a board object from a mailbox of the current board state.
-Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-        bool _whiteCanQCastle, bool _blackCanQCastle,  uint16_t _epCaptureFile,
+Board::Board(int *mailboxBoard, char _whiteCanKCastle, char _blackCanKCastle,
+        char _whiteCanQCastle, char _blackCanQCastle,  uint16_t _epCaptureFile,
         int _fiftyMoveCounter, int _moveNumber, int _playerToMove) {
     // Initialize bitboards
     for (int i = 0; i < 12; i++) {
@@ -126,10 +132,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     kingSqs[WHITE] = bitScanForward(pieces[WHITE][KINGS]);
     kingSqs[BLACK] = bitScanForward(pieces[BLACK][KINGS]);
 
-    WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
-    WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
-    BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
-    BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
+    setPassthroughs(_whiteCanKCastle, _whiteCanQCastle, _blackCanKCastle, _blackCanQCastle);
 }
 
 Board::~Board() {}
@@ -272,11 +275,11 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[64*ROOKS+0];
                 }
 
-                allPieces[WHITE] |= indexToBit(2);
-                allPieces[WHITE] |= indexToBit(3);
-
                 pieces[WHITE][KINGS] |= indexToBit(2);
                 pieces[WHITE][ROOKS] |= indexToBit(3);
+
+                allPieces[WHITE] |= indexToBit(2);
+                allPieces[WHITE] |= indexToBit(3);
 
                 zobristKey ^= zobristTable[64*KINGS+2];
                 zobristKey ^= zobristTable[64*ROOKS+3];
@@ -302,11 +305,11 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[384+64*ROOKS+63];
                 }
 
-                allPieces[BLACK] |= indexToBit(62);
-                allPieces[BLACK] |= indexToBit(61);
-
                 pieces[BLACK][KINGS] |= indexToBit(62);
                 pieces[BLACK][ROOKS] |= indexToBit(61);
+
+                allPieces[BLACK] |= indexToBit(62);
+                allPieces[BLACK] |= indexToBit(61);
 
                 zobristKey ^= zobristTable[384+64*KINGS+62];
                 zobristKey ^= zobristTable[384+64*ROOKS+61];
@@ -332,11 +335,11 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[384+64*ROOKS+56];
                 }
 
-                allPieces[BLACK] |= indexToBit(58);
-                allPieces[BLACK] |= indexToBit(59);
-
                 pieces[BLACK][KINGS] |= indexToBit(58);
                 pieces[BLACK][ROOKS] |= indexToBit(59);
+
+                allPieces[BLACK] |= indexToBit(58);
+                allPieces[BLACK] |= indexToBit(59);
 
                 zobristKey ^= zobristTable[384+64*KINGS+58];
                 zobristKey ^= zobristTable[384+64*ROOKS+59];
@@ -1042,41 +1045,84 @@ void Board::addCastlesToList(MoveList &moves, int color) const {
     if (color == WHITE) {
         // If castling rights still exist, squares in between king and rook are
         // empty, and player is not in check
+        uint64_t occ = getOccupancy() ^ indexToBit(kingSqs[WHITE]);
+        int rkSq;
+//TODO
         if ((castlingRights & WHITEKSIDE)
-         && (getOccupancy() & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
+         && (  (occ ^ indexToBit(rkSq = bitScanReverse(pieces[WHITE][ROOKS] & RANK_1)))
+             & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
             // Check for castling through check
-            if (getAttackMap(BLACK, 5) == 0) {
-                Move m = encodeMove(4, 6);
+            bool noCheck = true;
+            int s = std::min(6, kingSqs[WHITE]+1);
+            do {
+                if (getAttackMap(BLACK, s) != 0) {
+                    noCheck = false;
+                }
+            } while (s++ < 6);
+            if (false && noCheck) {
+cout << "info string addwkcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 6)
+     << " pt " << WHITE_KSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
+     << " b\n" << bToString() << endl;
+                Move m = encodeMove(kingSqs[WHITE], isChess960() ? rkSq : 6);
                 m = setCastle(m, true);
                 moves.add(m);
             }
         }
         if ((castlingRights & WHITEQSIDE)
-         && (getOccupancy() & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
+         && (  (occ ^ indexToBit(rkSq = bitScanForward(pieces[WHITE][ROOKS] & RANK_1)))
+             & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
-            if (getAttackMap(BLACK, 3) == 0) {
-                Move m = encodeMove(4, 2);
+            bool noCheck = true;
+            int s = std::max(2, kingSqs[WHITE]-1);
+            do {
+                if (getAttackMap(BLACK, s) != 0) {
+                    noCheck = false;
+                }
+            } while (s-- > 2);
+            if (false && noCheck) {
+cout << "info string addwqcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 2)
+     << " pt " << WHITE_QSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
+     << " b\n" << bToString() << endl;
+                Move m = encodeMove(kingSqs[WHITE], isChess960() ? rkSq : 2);
                 m = setCastle(m, true);
                 moves.add(m);
             }
         }
     }
     else {
+        uint64_t occ = getOccupancy() ^ indexToBit(kingSqs[BLACK]);
+        int rkSq;
         if ((castlingRights & BLACKKSIDE)
-         && (getOccupancy() & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
+         && (  (occ ^ indexToBit(rkSq = bitScanReverse(pieces[BLACK][ROOKS] & RANK_8)))
+             & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 61) == 0) {
-                Move m = encodeMove(60, 62);
+            bool noCheck = true;
+            int s = std::min(62, kingSqs[BLACK]+1);
+            do {
+                if (getAttackMap(WHITE, s) != 0) {
+                    noCheck = false;
+                }
+            } while (s++ < 62);
+            if (false && noCheck) {
+                Move m = encodeMove(kingSqs[BLACK], isChess960() ? rkSq : 62);
                 m = setCastle(m, true);
                 moves.add(m);
             }
         }
         if ((castlingRights & BLACKQSIDE)
-         && (getOccupancy() & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
+         && (  (occ ^ indexToBit(rkSq = bitScanForward(pieces[BLACK][ROOKS] & RANK_8)))
+             & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 59) == 0) {
-                Move m = encodeMove(60, 58);
+            bool noCheck = true;
+            int s = std::max(58, kingSqs[BLACK]-1);
+            do {
+                if (getAttackMap(WHITE, s) != 0) {
+                    noCheck = false;
+                }
+            } while (s-- > 58);
+            if (false && noCheck) {
+                Move m = encodeMove(kingSqs[BLACK], isChess960() ? rkSq : 58);
                 m = setCastle(m, true);
                 moves.add(m);
             }
@@ -1588,4 +1634,58 @@ void Board::initZobristKey(int *mailbox) {
         zobristKey ^= zobristTable[768];
     zobristKey ^= zobristTable[769 + castlingRights];
     zobristKey ^= zobristTable[785 + epCaptureFile];
+}
+
+void Board::setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
+                            char _blackCanKCastle, char _blackCanQCastle) {
+    if (!isChess960()) {
+        WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+        WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+        BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+        BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
+    }
+    else {
+        int sq;
+        WHITE_KSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = std::min(5, getKingSq(WHITE)+1);
+             _whiteCanKCastle && sq <= std::max(6, _whiteCanKCastle-'A') && (sq % 8);
+             ++sq)
+            // && (sq % 8) not really necessary
+            WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        WHITE_QSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = std::max(3, getKingSq(WHITE) - 1);
+             _whiteCanQCastle && sq >= std::min(2, _whiteCanQCastle-'A') && (sq % 8 != 7);
+             --sq)
+            WHITE_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        BLACK_KSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = std::min(5, getKingSq(BLACK) + 1);
+             _blackCanKCastle && sq <= std::max(6, _blackCanKCastle-'a') && (sq % 8);
+             ++sq)
+            BLACK_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        BLACK_QSIDE_PASSTHROUGH_SQS = 0;
+        for (sq = std::max(3, getKingSq(BLACK) - 1);
+             _blackCanQCastle && sq >= std::min(2, _blackCanQCastle-'a') && (sq % 8 != 7);
+             --sq)
+            BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+    }
+}
+
+std::string Board::bToString() const {
+    int *mailbox = getMailbox();
+    string pieceString = " PNBRQKpnbrqk";
+    string boardString;
+    for (int i = 7; i >= 0; i--) {
+        boardString += (char)(i + '1');
+        boardString += '|';
+        for (int j = 0; j < 8; j++) {
+            boardString += pieceString[mailbox[8*i+j] + 1];
+        }
+        boardString += "|\n";
+    }
+    boardString += "  abcdefgh\n";
+    delete[] mailbox;
+    return boardString;
 }

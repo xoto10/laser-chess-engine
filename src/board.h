@@ -78,11 +78,13 @@ void initZobristTable();
 class Board {
 public:
     Board();
-    Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-          bool _whiteCanQCastle, bool _blackCanQCastle, uint16_t _epCaptureFile,
+    Board(int *mailboxBoard, char _whiteCanKCastle, char _blackCanKCastle,
+          char _whiteCanQCastle, char _blackCanQCastle, uint16_t _epCaptureFile,
           int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
     ~Board();
     Board staticCopy() const;
+
+    std::string bToString() const;
 
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
@@ -149,6 +151,9 @@ public:
     uint64_t getZobristKey() const;
 
     void initZobristKey(int *mailbox);
+    void setPassthroughs();
+    void setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
+                         char _blackCanKCastle, char _blackCanQCastle);
 
     uint64_t WHITE_KSIDE_PASSTHROUGH_SQS;
     uint64_t WHITE_QSIDE_PASSTHROUGH_SQS;
