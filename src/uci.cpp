@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
 
     Board board = fenToBoard(STARTPOS);
 
-//  cout << name << " " << version << " by " << author << endl;
+    cout << name << " " << version << " by " << author << endl;
 
     // Run benchmark from command line with given depth
     if (argc > 1 && strcmp(argv[1], "bench") == 0) {
@@ -204,7 +204,9 @@ int main(int argc, char **argv) {
                     timeParams.maxAllotment = (int) std::min(value * MAX_TIME_FACTOR, timeRemaining * 0.95);
                     timeParams.allotment = std::min(value, timeParams.maxAllotment / 3);
                 }
-cout << "info string 960 " << isChess960() << " go received\n" << boardToString(board) << endl;
+//cout << "info string 960 " << isChess960() << " go received cr " << int(board.getCastlingRights())
+//     << " kwh " << board.getKingSq(WHITE) << " kbl " << board.getKingSq(BLACK)
+//     << "\n" << boardToString(board) << endl;
             }
 
             isStop = false;
@@ -314,11 +316,11 @@ cout << "info string 960 " << isChess960() << " go received\n" << boardToString(
 
             uint64_t time = getTimeElapsed(startTime);
 
-//          cerr << "Nodes: " << nodes << endl;
+            cerr << "Nodes: " << nodes << endl;
             cerr << nodes << endl;
-//          cerr << "Captures: " << captures << endl;
-//          cerr << "Time: " << time << endl;
-//          cerr << "Nodes/second: " << 1000 * nodes / time << endl;
+            cerr << "Captures: " << captures << endl;
+            cerr << "Time: " << time << endl;
+            cerr << "Nodes/second: " << 1000 * nodes / time << endl;
         }
         else if (input.substr(0, 5) == "bench") {
             int depth = 0;
@@ -361,6 +363,7 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
     board = fenToBoard(pos);
     TwoFoldStack *twoFoldPositions = getTwoFoldStackPointer();
     twoFoldPositions->clear();
+//cout << "info string 960 " << isChess960() << " position received cr " << int(board.getCastlingRights()) << "\n" << boardToString(board) << endl;
 
     size_t moveListStart = input.find("moves");
     if (moveListStart != string::npos) {
@@ -386,8 +389,9 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
             }
         }
     }
-if (castled)
-cout << "info string c960 castled\n" << boardToString(board) << endl;
+//if (castled)
+//cout << "info string c960 castled\n" << boardToString(board) << endl;
+//cout << "info string 960 " << isChess960() << " position moves made cr " << int(board.getCastlingRights()) << "\n" << boardToString(board) << endl;
 
     twoFoldPositions->setRootEnd();
 }
@@ -416,19 +420,20 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
     bool isCastle;
     castled = false;
-//if (isKingMove && abs(endSq - startSq) > 1 && abs(endSq - startSq) < 5)
-//cout << "info string c960 castle in2\n" << boardToString(b) << " c960 " << int(isChess960()) << " mvin " << moveStr << endl;
 
     if (isChess960()) {
         if ( (isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)))) )
         {
-cout << "info string c960 castle in\n" << boardToString(b) << " mvin " << moveStr << endl;
+//cout << "info string c960 castle in\n" << boardToString(b) << " mvin " << moveStr << " isCap " << int(isCapture) << endl;
             castled = true;
 //          endSq = (color ? 56 : 0) + (endSq > startSq ? 6 : 2);
         }
     }
     else
         isCastle = (isKingMove && abs(endSq - startSq) == 2);
+//if (isKingMove && abs(endSq - startSq) != 2)
+//cout << "info string c960 castle in2\n" << boardToString(b) << " c960 " << int(isChess960()) << " mvin " << moveStr << " isCap " << int(isCapture) << " isCas " << int(isCastle) << " kwh " << b.getKingSq(WHITE) << endl;
+
     string promotionString = " nbrq";
     int promotion = (moveStr.length() == 5)
         ? promotionString.find(moveStr.at(4)) : 0;
@@ -475,10 +480,10 @@ Board fenToBoard(string s) {
 
     int playerToMove = (components.at(1) == "w") ? WHITE : BLACK;
 
-    char whiteCanKCastle = false;
-    char whiteCanQCastle = false;
-    char blackCanKCastle = false;
-    char blackCanQCastle = false;
+    char whiteCanKCastle = 0;
+    char whiteCanQCastle = 0;
+    char blackCanKCastle = 0;
+    char blackCanQCastle = 0;
     //cout << "info string comp2 " << components.at(2) << endl;
     for (unsigned i = 0; i < components.at(2).length(); i++) {
         char c = components.at(2).at(i);
@@ -496,9 +501,9 @@ Board fenToBoard(string s) {
             else                           blackCanQCastle = c;
         }
     }
-if (whiteCanKCastle || whiteCanQCastle || blackCanKCastle || blackCanQCastle)
-    cout << "info string castles " << (whiteCanQCastle?"Q":"-") << (whiteCanKCastle?"K":"-")
-         << (blackCanQCastle?"q":"-") << (blackCanKCastle?"k":"-") << endl;
+//if (whiteCanKCastle || whiteCanQCastle || blackCanKCastle || blackCanQCastle)
+//    cout << "info string castles " << (whiteCanQCastle?"Q":"-") << (whiteCanKCastle?"K":"-")
+//         << (blackCanQCastle?"q":"-") << (blackCanKCastle?"k":"-") << endl;
 
     int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
         : components.at(3).at(0) - 'a';

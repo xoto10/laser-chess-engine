@@ -29,6 +29,9 @@ constexpr uint8_t BLACKQSIDE = 0x8;
 constexpr uint8_t WHITECASTLE = 0x3;
 constexpr uint8_t BLACKCASTLE = 0xC;
 
+constexpr uint8_t KROOK = 0x0;
+constexpr uint8_t QROOK = 0x1;
+
 constexpr uint16_t NO_EP_POSSIBLE = 0x8;
 
 constexpr bool MOVEGEN_CAPTURES = true;
@@ -151,7 +154,6 @@ public:
     uint64_t getZobristKey() const;
 
     void initZobristKey(int *mailbox);
-    void setPassthroughs();
     void setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
                          char _blackCanKCastle, char _blackCanQCastle);
 
@@ -186,6 +188,7 @@ private:
 
     // Precomputed tables
     int kingSqs[2];
+    int rookSq[2]; // [KROOK,QROOK]
 
     void addPawnMovesToList(MoveList &quiets, int color) const;
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) const;

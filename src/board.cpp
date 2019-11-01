@@ -245,6 +245,7 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[64*ROOKS+7];
                 }
 
+                kingSqs[WHITE] = 6;
                 pieces[WHITE][KINGS] |= indexToBit(6);
                 pieces[WHITE][ROOKS] |= indexToBit(5);
 
@@ -275,6 +276,7 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[64*ROOKS+0];
                 }
 
+                kingSqs[WHITE] = 2;
                 pieces[WHITE][KINGS] |= indexToBit(2);
                 pieces[WHITE][ROOKS] |= indexToBit(3);
 
@@ -305,6 +307,7 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[384+64*ROOKS+63];
                 }
 
+                kingSqs[BLACK] = 62;
                 pieces[BLACK][KINGS] |= indexToBit(62);
                 pieces[BLACK][ROOKS] |= indexToBit(61);
 
@@ -335,6 +338,7 @@ void Board::doMove(Move m, int color) {
                     zobristKey ^= zobristTable[384+64*ROOKS+56];
                 }
 
+                kingSqs[BLACK] = 58;
                 pieces[BLACK][KINGS] |= indexToBit(58);
                 pieces[BLACK][ROOKS] |= indexToBit(59);
 
@@ -379,23 +383,24 @@ void Board::doMove(Move m, int color) {
             castlingRights &= ~WHITECASTLE;
         else
             castlingRights &= ~BLACKCASTLE;
-        kingSqs[color] = endSq;
+        if (!isCastle(m))
+            kingSqs[color] = endSq;
     }
     // Castling rights change because of the rook only when the rook moves or
     // is captured
     else if (isCapture(m) || pieceID == ROOKS) {
         // No sense in removing the rights if they're already gone
         if (castlingRights & WHITECASTLE) {
-            if ((pieces[WHITE][ROOKS] & 0x80) == 0)
+            if ((pieces[WHITE][ROOKS] & indexToBit(rookSq[KROOK])) == 0)
                 castlingRights &= ~WHITEKSIDE;
-            if ((pieces[WHITE][ROOKS] & 1) == 0)
+            if ((pieces[WHITE][ROOKS] & indexToBit(rookSq[QROOK])) == 0)
                 castlingRights &= ~WHITEQSIDE;
         }
         if (castlingRights & BLACKCASTLE) {
             uint64_t blackR = pieces[BLACK][ROOKS] >> 56;
-            if ((blackR & 0x80) == 0)
+            if ((blackR & indexToBit(56 + rookSq[KROOK])) == 0)
                 castlingRights &= ~BLACKKSIDE;
-            if ((blackR & 0x1) == 0)
+            if ((blackR & indexToBit(56 + rookSq[QROOK])) == 0)
                 castlingRights &= ~BLACKQSIDE;
         }
     } // end castling flags
@@ -1047,11 +1052,11 @@ void Board::addCastlesToList(MoveList &moves, int color) const {
         // empty, and player is not in check
         uint64_t occ = getOccupancy() ^ indexToBit(kingSqs[WHITE]);
         int rkSq;
-//TODO
         if ((castlingRights & WHITEKSIDE)
          && (  (occ ^ indexToBit(rkSq = bitScanReverse(pieces[WHITE][ROOKS] & RANK_1)))
              & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
+//cout << "info string addwkcastle start" << endl;
             // Check for castling through check
             bool noCheck = true;
             int s = std::min(6, kingSqs[WHITE]+1);
@@ -1061,9 +1066,10 @@ void Board::addCastlesToList(MoveList &moves, int color) const {
                 }
             } while (s++ < 6);
             if (false && noCheck) {
-cout << "info string addwkcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 6)
-     << " pt " << WHITE_KSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
-     << " b\n" << bToString() << endl;
+//cout << "info string addwkcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 6)
+//     << " pt " << WHITE_KSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
+//     << " rkchk " << (rkSq > kingSqs[WHITE] && 0 <= rkSq && rkSq < 8 ? "ok " : "bad ")
+//     << " b\n" << bToString() << endl;
                 Move m = encodeMove(kingSqs[WHITE], isChess960() ? rkSq : 6);
                 m = setCastle(m, true);
                 moves.add(m);
@@ -1073,6 +1079,7 @@ cout << "info string addwkcastle " << kingSqs[WHITE] << "," << (isChess960() ? r
          && (  (occ ^ indexToBit(rkSq = bitScanForward(pieces[WHITE][ROOKS] & RANK_1)))
              & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
+//cout << "info string addwqcastle start" << endl;
             bool noCheck = true;
             int s = std::max(2, kingSqs[WHITE]-1);
             do {
@@ -1081,9 +1088,10 @@ cout << "info string addwkcastle " << kingSqs[WHITE] << "," << (isChess960() ? r
                 }
             } while (s-- > 2);
             if (false && noCheck) {
-cout << "info string addwqcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 2)
-     << " pt " << WHITE_QSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
-     << " b\n" << bToString() << endl;
+//cout << "info string addwqcastle " << kingSqs[WHITE] << "," << (isChess960() ? rkSq : 2)
+//     << " pt " << WHITE_QSIDE_PASSTHROUGH_SQS << " occrk1 " << ((occ ^ indexToBit(rkSq)) & RANK_1)
+//     << " rkchk " << (rkSq < kingSqs[WHITE] && 0 <= rkSq && rkSq < 8 ? "ok " : "bad ")
+//     << " b\n" << bToString() << endl;
                 Move m = encodeMove(kingSqs[WHITE], isChess960() ? rkSq : 2);
                 m = setCastle(m, true);
                 moves.add(m);
@@ -1097,6 +1105,7 @@ cout << "info string addwqcastle " << kingSqs[WHITE] << "," << (isChess960() ? r
          && (  (occ ^ indexToBit(rkSq = bitScanReverse(pieces[BLACK][ROOKS] & RANK_8)))
              & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
+//cout << "info string addwkcastle start" << endl;
             bool noCheck = true;
             int s = std::min(62, kingSqs[BLACK]+1);
             do {
@@ -1114,6 +1123,7 @@ cout << "info string addwqcastle " << kingSqs[WHITE] << "," << (isChess960() ? r
          && (  (occ ^ indexToBit(rkSq = bitScanForward(pieces[BLACK][ROOKS] & RANK_8)))
              & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
+//cout << "info string addwqcastle start" << endl;
             bool noCheck = true;
             int s = std::max(58, kingSqs[BLACK]-1);
             do {
@@ -1643,6 +1653,8 @@ void Board::setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
         WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
         BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
         BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
+        rookSq[KROOK] = 7;
+        rookSq[QROOK] = 0;
     }
     else {
         int sq;
@@ -1650,7 +1662,7 @@ void Board::setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
         for (sq = std::min(5, getKingSq(WHITE)+1);
              _whiteCanKCastle && sq <= std::max(6, _whiteCanKCastle-'A') && (sq % 8);
              ++sq)
-            // && (sq % 8) not really necessary
+// TODO && (sq % 8) not really necessary
             WHITE_KSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
 
         WHITE_QSIDE_PASSTHROUGH_SQS = 0;
@@ -1670,6 +1682,9 @@ void Board::setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
              _blackCanQCastle && sq >= std::min(2, _blackCanQCastle-'a') && (sq % 8 != 7);
              --sq)
             BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
+
+        rookSq[KROOK] = (_whiteCanKCastle - 'A') | (_blackCanKCastle - 'a');
+        rookSq[QROOK] = (_whiteCanQCastle - 'A') | (_blackCanQCastle - 'a');
     }
 }
 
