@@ -154,8 +154,6 @@ public:
     uint64_t getZobristKey() const;
 
     void initZobristKey(int *mailbox);
-    void setPassthroughs(char _whiteCanKCastle, char _whiteCanQCastle,
-                         char _blackCanKCastle, char _blackCanQCastle);
 
     uint64_t WHITE_KSIDE_PASSTHROUGH_SQS;
     uint64_t WHITE_QSIDE_PASSTHROUGH_SQS;
