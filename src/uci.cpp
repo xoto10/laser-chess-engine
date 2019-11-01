@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
             cout << "option name Hash type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name Ponder type check default false" << endl;
+            cout << "option name UCI_Chess960 type check default false" << endl;
             cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
             cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
@@ -249,6 +250,9 @@ int main(int argc, char **argv) {
                 }
                 else if (inputVector.at(2) == "ponder") {
                     // do nothing
+                }
+                else if (inputVector.at(2) == "uci_chess960") {
+                  setChess960(inputVector.at(4) == "true" ? true : false);
                 }
                 else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));
@@ -405,7 +409,13 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
 
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
-    bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
+    bool isCastle;
+
+    if (isChess960())
+        isCastle = (isKingMove && (bool)(indexToBit(endSq) & b.getPieces(color, ROOKS)));
+    else
+        isCastle = (isKingMove && abs(endSq - startSq) == 2);
+
     string promotionString = " nbrq";
     int promotion = (moveStr.length() == 5)
         ? promotionString.find(moveStr.at(4)) : 0;
@@ -431,6 +441,7 @@ Board fenToBoard(string s) {
     int mailbox[64];
     int sqCounter = -1;
     string pieceString = "PNBRQKpnbrqk";
+    int ksq[2];
 
     // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
     for (int elem = 7; elem >= 0; elem--) {
@@ -438,16 +449,37 @@ Board fenToBoard(string s) {
 
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
             char sq = rowAtElem.at(col);
+            if (sq == 'K')
+                ksq[WHITE] = 8*(8-elem) + col-1;
+            else if (sq == 'k')
+                ksq[BLACK] = 8*(8-elem) + col-1;
             do mailbox[++sqCounter] = pieceString.find(sq--);
             while ('0' < sq && sq < '8');
         }
     }
 
     int playerToMove = (components.at(1) == "w") ? WHITE : BLACK;
-    bool whiteCanKCastle = (components.at(2).find("K") != string::npos);
-    bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
-    bool blackCanKCastle = (components.at(2).find("k") != string::npos);
-    bool blackCanQCastle = (components.at(2).find("q") != string::npos);
+
+    char whiteCanKCastle = 0;
+    char whiteCanQCastle = 0;
+    char blackCanKCastle = 0;
+    char blackCanQCastle = 0;
+    for (unsigned i = 0; i < components.at(2).length(); i++) {
+        char c = components.at(2).at(i);
+        if (c == 'K') whiteCanKCastle = c;
+        if (c == 'Q') whiteCanQCastle = c;
+        if (c == 'k') blackCanKCastle = c;
+        if (c == 'q') blackCanQCastle = c;
+        if ('A' <= c && c <= 'H') {
+            if (c - 'A' > ksq[WHITE] % 8)  whiteCanKCastle = c;
+            else                           whiteCanQCastle = c;
+        }
+        if ('a' <= c && c <= 'h') {
+            if (c - 'a' > ksq[BLACK] % 8)  blackCanKCastle = c;
+            else                           blackCanQCastle = c;
+        }
+    }
+
     int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
         : components.at(3).at(0) - 'a';
     int fiftyMoveCounter = (components.size() == 6) ? std::stoi(components.at(4)) : 0;

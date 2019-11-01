@@ -94,6 +94,8 @@ void setHashSize(uint64_t MB);
 uint64_t getNodes();
 void setMultiPV(unsigned int n);
 void setNumThreads(int n);
+void setChess960(bool c960);
+bool isChess960();
 void initPerThreadMemory();
 void initReductionTable();
 TwoFoldStack *getTwoFoldStackPointer();

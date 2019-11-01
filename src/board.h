@@ -29,6 +29,9 @@ constexpr uint8_t BLACKQSIDE = 0x8;
 constexpr uint8_t WHITECASTLE = 0x3;
 constexpr uint8_t BLACKCASTLE = 0xC;
 
+constexpr uint8_t KROOK = 0x0;
+constexpr uint8_t QROOK = 0x1;
+
 constexpr uint16_t NO_EP_POSSIBLE = 0x8;
 
 constexpr bool MOVEGEN_CAPTURES = true;
@@ -78,8 +81,8 @@ void initZobristTable();
 class Board {
 public:
     Board();
-    Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-          bool _whiteCanQCastle, bool _blackCanQCastle, uint16_t _epCaptureFile,
+    Board(int *mailboxBoard, char _whiteCanKCastle, char _blackCanKCastle,
+          char _whiteCanQCastle, char _blackCanQCastle, uint16_t _epCaptureFile,
           int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
     ~Board();
     Board staticCopy() const;
@@ -150,6 +153,11 @@ public:
 
     void initZobristKey(int *mailbox);
 
+    uint64_t WHITE_KSIDE_PASSTHROUGH_SQS;
+    uint64_t WHITE_QSIDE_PASSTHROUGH_SQS;
+    uint64_t BLACK_KSIDE_PASSTHROUGH_SQS;
+    uint64_t BLACK_QSIDE_PASSTHROUGH_SQS;
+
 private:
     // Bitboards for all white or all black pieces
     uint64_t allPieces[2];
@@ -176,6 +184,7 @@ private:
 
     // Precomputed tables
     int kingSqs[2];
+    int rookSq[2]; // [KROOK,QROOK]
 
     void addPawnMovesToList(MoveList &quiets, int color) const;
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) const;

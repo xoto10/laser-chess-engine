@@ -132,6 +132,7 @@ int dummyBestScore[MAX_THREADS-1];
 unsigned int multiPV;
 int numThreads;
 bool isPonderSearch = false;
+bool chess960 = false;
 
 // Accessible from tbcore.c
 int TBlargest = 0;
@@ -1489,6 +1490,14 @@ void setNumThreads(int n) {
         delete threadMemoryArray.back();
         threadMemoryArray.pop_back();
     }
+}
+
+void setChess960(bool c960) {
+    chess960 = c960;
+}
+
+bool isChess960() {
+    return chess960;
 }
 
 void initPerThreadMemory() {
