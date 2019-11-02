@@ -128,6 +128,7 @@ Board::Board(int *mailboxBoard, char _whiteCanKCastle, char _blackCanKCastle,
     kingSqs[BLACK] = bitScanForward(pieces[BLACK][KINGS]);
 
     if (!isChess960()) {
+// TODO should use _whiteCanKCastle etc
         WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
         WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
         BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
@@ -162,8 +163,10 @@ Board::Board(int *mailboxBoard, char _whiteCanKCastle, char _blackCanKCastle,
              --sq)
             BLACK_QSIDE_PASSTHROUGH_SQS |= indexToBit(sq);
 
-        rookSq[KROOK] = (_whiteCanKCastle - 'A') | (_blackCanKCastle - 'a');
-        rookSq[QROOK] = (_whiteCanQCastle - 'A') | (_blackCanQCastle - 'a');
+        rookSq[KROOK] = _whiteCanKCastle ? (_whiteCanKCastle - 'A')
+                                         : _blackCanKCastle ? (_blackCanKCastle - 'a') : 7;
+        rookSq[QROOK] = _whiteCanQCastle ? (_whiteCanQCastle - 'A')
+                                         : _blackCanQCastle ? (_blackCanQCastle - 'a') : 0;
     }
 }
 
@@ -421,6 +424,7 @@ void Board::doMove(Move m, int color) {
     // Castling rights change because of the rook only when the rook moves or
     // is captured
     else if (isCapture(m) || pieceID == ROOKS) {
+        // TODO use getPieceOnSquare(color^1, endSq) ?
         // No sense in removing the rights if they're already gone
         if (castlingRights & WHITECASTLE) {
             if ((pieces[WHITE][ROOKS] & indexToBit(rookSq[KROOK])) == 0)
@@ -430,9 +434,9 @@ void Board::doMove(Move m, int color) {
         }
         if (castlingRights & BLACKCASTLE) {
             uint64_t blackR = pieces[BLACK][ROOKS] >> 56;
-            if ((blackR & indexToBit(56 + rookSq[KROOK])) == 0)
+            if ((blackR & indexToBit(rookSq[KROOK])) == 0)
                 castlingRights &= ~BLACKKSIDE;
-            if ((blackR & indexToBit(56 + rookSq[QROOK])) == 0)
+            if ((blackR & indexToBit(rookSq[QROOK])) == 0)
                 castlingRights &= ~BLACKQSIDE;
         }
     } // end castling flags
